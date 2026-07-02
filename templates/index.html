@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Release Pulse — Real-time Updates & Smart Tweet</title>
+    <meta name="description" content="Explore, filter, and share Google Cloud BigQuery release notes. Stay updated with feature releases, changes, deprecations, and fixes.">
+    
+    <!-- Google Fonts: Inter and Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for UI Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="dark-mode">
+    <div class="glow-bg-container">
+        <div class="glow-dot glow-1"></div>
+        <div class="glow-dot glow-2"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="header-brand">
+                <div class="logo-icon-wrapper">
+                    <i class="fa-solid fa-database logo-icon"></i>
+                    <div class="logo-pulse"></div>
+                </div>
+                <div class="brand-text">
+                    <h1>BigQuery Release Pulse</h1>
+                    <p class="brand-subtitle">Google Cloud Feed Explorer &amp; Curator</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="sync-status" id="syncStatus">
+                    <span class="status-indicator status-syncing"></span>
+                    <span class="status-text" id="syncStatusText">Initializing...</span>
+                </div>
+                
+                <button id="refreshBtn" class="btn btn-primary btn-sync" aria-label="Sync Feed">
+                    <i class="fa-solid fa-arrows-rotate sync-icon" id="syncIcon"></i>
+                    <span>Sync Feed</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <main class="app-main">
+            <!-- SIDEBAR FILTERS -->
+            <aside class="sidebar">
+                <div class="sidebar-widget search-widget">
+                    <label for="searchInput" class="widget-title">Search Updates</label>
+                    <div class="search-input-wrapper">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="searchInput" placeholder="Search features, fixes, etc..." autocomplete="off">
+                        <button id="clearSearchBtn" class="clear-search-btn" aria-label="Clear Search">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sidebar-widget filter-widget">
+                    <h3 class="widget-title">Filter by Category</h3>
+                    <div class="category-filters" id="categoryFilters">
+                        <button class="filter-btn active" data-type="all" id="btnFilterAll">
+                            <span class="btn-content">
+                                <i class="fa-solid fa-layer-group"></i> All Updates
+                            </span>
+                            <span class="count-badge" id="countAll">-</span>
+                        </button>
+                        <button class="filter-btn" data-type="Feature" id="btnFilterFeature">
+                            <span class="btn-content">
+                                <span class="type-dot type-feature"></span> Features
+                            </span>
+                            <span class="count-badge" id="countFeature">-</span>
+                        </button>
+                        <button class="filter-btn" data-type="Change" id="btnFilterChange">
+                            <span class="btn-content">
+                                <span class="type-dot type-change"></span> Changes
+                            </span>
+                            <span class="count-badge" id="countChange">-</span>
+                        </button>
+                        <button class="filter-btn" data-type="Fix" id="btnFilterFix">
+                            <span class="btn-content">
+                                <span class="type-dot type-fix"></span> Fixes
+                            </span>
+                            <span class="count-badge" id="countFix">-</span>
+                        </button>
+                        <button class="filter-btn" data-type="Deprecated" id="btnFilterDeprecated">
+                            <span class="btn-content">
+                                <span class="type-dot type-deprecated"></span> Deprecated
+                            </span>
+                            <span class="count-badge" id="countDeprecated">-</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sidebar-widget stats-widget">
+                    <h3 class="widget-title">Feed Analytics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-num" id="statTotalDays">-</div>
+                            <div class="stat-label">Days Logged</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-num" id="statTotalItems">-</div>
+                            <div class="stat-label">Total Notes</div>
+                        </div>
+                    </div>
+                    <div class="feed-info-meta">
+                        <div class="meta-row">
+                            <span class="meta-label">Provider</span>
+                            <span class="meta-value">Google Cloud</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Format</span>
+                            <span class="meta-value">Atom XML Feed</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Last Sync</span>
+                            <span class="meta-value" id="lastSyncTime">-</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- FEED CONTAINER -->
+            <section class="feed-section">
+                <!-- Skeleton Loader -->
+                <div class="skeleton-container" id="skeletonLoader">
+                    <div class="skeleton-date-header"></div>
+                    <div class="skeleton-card">
+                        <div class="skeleton-line title"></div>
+                        <div class="skeleton-line paragraph"></div>
+                        <div class="skeleton-line paragraph short"></div>
+                        <div class="skeleton-footer"></div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton-line title"></div>
+                        <div class="skeleton-line paragraph"></div>
+                        <div class="skeleton-footer"></div>
+                    </div>
+                    <div class="skeleton-date-header"></div>
+                    <div class="skeleton-card">
+                        <div class="skeleton-line title"></div>
+                        <div class="skeleton-line paragraph"></div>
+                        <div class="skeleton-footer"></div>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div class="error-container hidden" id="errorState">
+                    <div class="error-icon-wrapper">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <h2>Failed to Retrieve Feed</h2>
+                    <p id="errorMsgText">We encountered an issue while trying to fetch the BigQuery release notes. Please check your internet connection and try again.</p>
+                    <button class="btn btn-secondary" id="errorRetryBtn">
+                        <i class="fa-solid fa-rotate"></i> Try Again
+                    </button>
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-container hidden" id="emptyState">
+                    <div class="empty-icon-wrapper">
+                        <i class="fa-solid fa-magnifying-glass-minus"></i>
+                    </div>
+                    <h2>No Matching Updates</h2>
+                    <p>We couldn't find any release notes that match your current search queries or category filters.</p>
+                    <button class="btn btn-link" id="resetFiltersBtn">Reset Filters</button>
+                </div>
+
+                <!-- Actual Feed Timeline -->
+                <div class="timeline-container hidden" id="timelineContainer">
+                    <!-- Dynamic timeline inserts here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- TWEET GENERATOR MODAL -->
+    <div class="modal-overlay hidden" id="tweetModal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="closeModalBtn" aria-label="Close modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            
+            <div class="modal-header">
+                <i class="fa-brands fa-x-twitter modal-title-icon"></i>
+                <h2>Draft Your Tweet</h2>
+            </div>
+            
+            <div class="modal-body">
+                <!-- X / Twitter Preview Card -->
+                <div class="tweet-preview-card">
+                    <div class="tweet-author-header">
+                        <div class="tweet-avatar">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div class="tweet-author-info">
+                            <span class="tweet-display-name">Cloud Dev</span>
+                            <span class="tweet-username">@cloud_developer</span>
+                        </div>
+                        <div class="x-badge">
+                            <i class="fa-brands fa-x-twitter"></i>
+                        </div>
+                    </div>
+                    <div class="tweet-preview-content" id="tweetPreviewText">
+                        Loading draft...
+                    </div>
+                    <div class="tweet-preview-footer">
+                        <span class="preview-stat"><i class="fa-regular fa-comment"></i> 0</span>
+                        <span class="preview-stat"><i class="fa-regular fa-repost"></i> 0</span>
+                        <span class="preview-stat"><i class="fa-regular fa-heart"></i> 0</span>
+                        <span class="preview-stat"><i class="fa-regular fa-bookmark"></i></span>
+                    </div>
+                </div>
+
+                <!-- Editor -->
+                <div class="editor-section">
+                    <label for="tweetEditText" class="editor-label">Customize Tweet Content</label>
+                    <textarea id="tweetEditText" rows="5" placeholder="Share your thoughts about this release note..."></textarea>
+                    
+                    <div class="editor-controls">
+                        <!-- Hashtag Helper Chips -->
+                        <div class="chip-container">
+                            <span class="hashtag-chip" data-tag="#BigQuery">#BigQuery</span>
+                            <span class="hashtag-chip" data-tag="#GoogleCloud">#GoogleCloud</span>
+                            <span class="hashtag-chip" data-tag="#DataOps">#DataOps</span>
+                            <span class="hashtag-chip" data-tag="#DataEngineering">#DataEngineering</span>
+                            <span class="hashtag-chip" data-tag="#GCP">#GCP</span>
+                        </div>
+                        
+                        <!-- Char Counter -->
+                        <div class="char-counter-wrapper">
+                            <span class="char-counter" id="charCounter">0/280</span>
+                            <div class="char-indicator-bar-bg">
+                                <div class="char-indicator-bar-fill" id="charIndicatorBar"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-copy" id="copyTweetBtn">
+                    <i class="fa-regular fa-copy" id="copyIcon"></i>
+                    <span id="copyText">Copy Clipboard</span>
+                </button>
+                <button class="btn btn-primary btn-tweet" id="postTweetBtn">
+                    <i class="fa-brands fa-x-twitter"></i>
+                    <span>Post on X</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast-notification hidden" id="toastNotification">
+        <i class="fa-solid fa-circle-check toast-icon"></i>
+        <span class="toast-message" id="toastMessage">Text copied to clipboard!</span>
+    </div>
+
+    <!-- Script File -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
